@@ -17,7 +17,7 @@ app.get('/penonton', (req, res) => {
 });
 
 // Jalur Admin Rahasia (Hanya panitia yang tahu link ini)
-app.get('/panitia-rahasia-99', (req, res) => {
+app.get('/panitia-24', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
