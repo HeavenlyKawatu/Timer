@@ -46,8 +46,6 @@
   .tools-row{display:flex;gap:10px;justify-content:center;margin-top:20px;}
   .btn-sm{padding:8px 12px;background:var(--line);color:#fff;border:none;border-radius:8px;cursor:pointer;}
   #qrcode{background:#fff;padding:10px;border-radius:8px;margin-top:10px;}
-  .network-config{margin-bottom:20px;padding:15px;background:var(--panel-alt);border-radius:8px;}
-  .network-config input{padding:8px;border-radius:5px;border:1px solid var(--line);background:#111;color:#fff;width:100%;margin-top:5px;}
 </style>
 </head>
 <body>
@@ -57,12 +55,6 @@
     <div class="checker"></div>
     <div style="margin:auto;max-width:400px;width:100%;padding:20px;">
       <h1 style="text-align:center;font-family:var(--font-head);color:var(--amber);">🏆 ADMIN PANEL</h1>
-      
-      <div class="network-config">
-        <label>Server URL:</label><br>
-        <input type="text" id="server-url">
-      </div>
-
       <button class="action-btn" style="background:var(--line);color:#fff;margin-bottom:10px;" onclick="initSystem('start')">🚦 Petugas Start</button>
       <button class="action-btn" style="background:var(--line);color:#fff;margin-bottom:10px;" onclick="initSystem('finish')">🏁 Petugas Finish</button>
       <button class="action-btn" style="background:var(--line);color:#fff;" onclick="initSystem('monitor')">📊 Monitor Utama</button>
@@ -84,11 +76,12 @@
       <div class="timer" id="timer-start">00:00.000</div>
       
       <input type="text" id="racer-name" placeholder="Nama Peserta / Nomor" style="padding:15px;width:100%;max-width:320px;border-radius:8px;">
-      <button class="action-btn action-start" id="btn-start" onclick="triggerCountdown()">MULAI</button>
-      <div style="display: flex; gap: 10px; margin-top: 20px; width: 100%; max-width: 320px;">
-  <button class="btn-sm" style="background:var(--amber); color:#000; flex:1; padding: 12px; font-weight:600;" onclick="resetTimer()">🔄 Reset Waktu</button>
-  <button class="btn-sm" style="background:var(--stop); color:#fff; flex:1; padding: 12px; font-weight:600;" onclick="confirmResetSystem()">🗑️ Reset Sistem</button>
-</div>
+      <button class="action-btn action-start" id="btn-start" onclick="triggerCountdown()">MULAI (3-2-1)</button>
+      
+      <div style="display:flex;gap:10px;margin-top:10px;width:100%;max-width:320px;">
+        <button class="btn-sm" style="background:var(--amber);color:#000;flex:1;padding:12px;font-weight:600;" onclick="resetTimer()">🔄 Reset Waktu</button>
+        <button class="btn-sm" style="background:var(--stop);color:#fff;flex:1;padding:12px;font-weight:600;" onclick="confirmResetSystem()">🗑️ Reset Sistem</button>
+      </div>
     </div>
   </div>
 
@@ -143,7 +136,6 @@
 </div>
 
 <script>
-  document.getElementById('server-url').value = window.location.origin;
   let socket, role = '';
   let state = { status: 'idle', startTime: null, finishTime: null, racer: '' };
   let leaderboard = [];
@@ -155,8 +147,7 @@
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
-    osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    osc.connect(gainNode); gainNode.connect(audioCtx.destination);
     if(type === 'beep') {
       osc.type = 'sine'; osc.frequency.value = 800;
       gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
@@ -174,8 +165,7 @@
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(role + '-panel').classList.add('active');
     
-    const serverUrl = document.getElementById('server-url').value;
-    socket = io(serverUrl);
+    socket = io();
     
     socket.on('connect', () => {
       document.getElementById('conn-' + role).textContent = '🟢 Online';
@@ -204,7 +194,15 @@
     socket.emit('trigger_finish', Date.now());
   }
 
-  function resetSystem() { socket.emit('reset_system'); }
+  function resetTimer() {
+    socket.emit('reset_timer');
+  }
+
+  function confirmResetSystem() {
+    if(confirm('PERINGATAN: Semua data leaderboard dan riwayat juara akan terhapus permanen. Lanjutkan?')) {
+      socket.emit('reset_system');
+    }
+  }
 
   function runChristmasTree(step) {
     document.querySelectorAll('.light').forEach(l => l.className = 'light');
@@ -267,7 +265,6 @@
   function generateQR() {
     const qrContainer = document.getElementById("qrcode");
     qrContainer.innerHTML = "";
-
     const viewUrl = window.location.origin + '/penonton'; 
     new QRCode(qrContainer, { text: viewUrl, width: 150, height: 150, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
   }
