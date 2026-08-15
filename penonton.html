@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Monitor - Lomba Motor</title>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --asphalt:#0b0b0d; --panel:#17171a; --panel-alt:#1d1d21; --line:#2b2b30;
+    --chrome:#f1f1ef; --dim:#87878e; --amber:#ffb400; --go:#14d97a; --stop:#ef1f3a;
+    --font-display:'Orbitron',monospace; --font-head:'Barlow Condensed',sans-serif; --font-body:'Barlow',-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--asphalt);color:var(--chrome);font-family:var(--font-body);min-height:100vh;}
+  .screen{min-height:100vh;display:flex;flex-direction:column;}
+  .checker{height:7px;width:100%;flex:none;background-image:linear-gradient(45deg,var(--line) 25%,transparent 25%,transparent 75%,var(--line) 75%),linear-gradient(45deg,var(--line) 25%,transparent 25%,transparent 75%,var(--line) 75%);background-size:14px 14px;background-position:0 0,7px 7px;opacity:.6;}
+  .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);}
+  .panel-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;padding:22px 20px 44px;text-align:center;}
+  .timer{font-family:var(--font-display);font-weight:800;font-size:4.6rem;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--amber);}
+  .tree-container{display:flex;flex-direction:column;gap:8px;background:var(--panel-alt);padding:15px;border-radius:12px;border:2px solid var(--line);transform:scale(0.9);}
+  .light-row{display:flex;gap:12px;justify-content:center;}
+  .light{width:30px;height:30px;border-radius:50%;background:#111;border:2px solid var(--line);transition:all 0.1s;}
+  .light.on-red{background:var(--stop);box-shadow:0 0 15px var(--stop);}
+  .light.on-yellow{background:var(--amber);box-shadow:0 0 15px var(--amber);}
+  .light.on-green{background:var(--go);box-shadow:0 0 25px var(--go);}
+  .countdown-text{font-size:2rem;font-family:var(--font-display);color:var(--amber);margin-top:10px;height:40px;}
+  .history-table{width:100%;max-width:500px;border-collapse:collapse;margin-top:10px;}
+  .history-table th, .history-table td{padding:10px;border-bottom:1px solid var(--line);text-align:left;}
+  .history-table th{color:var(--amber);}
+  .rank-1{color:var(--amber);font-weight:bold;}
+  .rank-2{color:#C0C0C0;}
+  .rank-3{color:#CD7F32;}
+</style>
+</head>
+<body>
+
+<div class="screen">
+  <div class="checker"></div>
+  <div class="panel-header">
+    <span style="font-family:var(--font-head);color:var(--amber);font-size:1.2rem;">🏆 LIVE TIMER & LEADERBOARD</span>
+    <span id="conn-status" style="color:var(--dim)">Menghubungkan...</span>
+  </div>
+  <div class="panel-body">
+    <div class="tree-container">
+      <div class="light-row"><div class="light" id="l-red-m"></div></div>
+      <div class="light-row"><div class="light" id="l-yel-m1"></div><div class="light" id="l-yel-m2"></div></div>
+      <div class="light-row"><div class="light" id="l-grn-m"></div></div>
+    </div>
+    <div class="countdown-text" id="cd-text">MENUNGGU</div>
+    <div class="timer" id="timer-monitor">00:00.000</div>
+    
+    <div style="width:100%;max-width:500px;text-align:left;margin-top:10px;">
+      <h3 style="font-family:var(--font-head);">PAPAN SKOR TERCEPAT</h3>
+      <table class="history-table">
+        <thead><tr><th>Pos</th><th>Peserta</th><th>Waktu</th></tr></thead>
+        <tbody id="leaderboard-body">
+          <tr><td colspan="3" style="text-align:center;">Belum ada data</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const socket = io(); // Otomatis terhubung ke domain saat ini
+  let state = { status: 'idle', startTime: null, finishTime: null };
+  let leaderboard = [];
+
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = new AudioContext();
+
+  function playSound(type) {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+    if(type === 'beep') {
+      osc.type = 'sine'; osc.frequency.value = 800;
+      gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else if(type === 'horn') {
+      osc.type = 'sawtooth'; osc.frequency.value = 300;
+      gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.8);
+    }
+  }
+
+  socket.on('connect', () => {
+    document.getElementById('conn-status').textContent = '🟢 Online';
+  });
+  socket.on('disconnect', () => {
+    document.getElementById('conn-status').textContent = '🔴 Offline';
+  });
+
+  socket.on('sync_state', (newState) => {
+    state = newState;
+    if(state.status === 'idle') runChristmasTree('IDLE');
+  });
+
+  socket.on('sync_leaderboard', (data) => {
+    leaderboard = data.sort((a, b) => a.duration - b.duration);
+    renderLeaderboard();
+  });
+
+  socket.on('countdown_step', (step) => {
+    runChristmasTree(step);
+  });
+
+  setInterval(tick, 10);
+
+  function runChristmasTree(step) {
+    document.querySelectorAll('.light').forEach(l => l.className = 'light');
+    const text = document.getElementById('cd-text');
+    if(step === 3) { playSound('beep'); document.getElementById('l-red-m').classList.add('on-red'); text.textContent = '3...'; } 
+    else if(step === 2) { playSound('beep'); document.getElementById('l-yel-m1').classList.add('on-yellow'); text.textContent = '2...'; } 
+    else if(step === 1) { playSound('beep'); document.getElementById('l-yel-m2').classList.add('on-yellow'); text.textContent = '1...'; } 
+    else if(step === 'GO') { playSound('horn'); document.getElementById('l-grn-m').classList.add('on-green'); text.textContent = 'GO!!!'; }
+    else if(step === 'IDLE') { text.textContent = 'MENUNGGU'; }
+  }
+
+  function tick() {
+    let ms = 0;
+    if(state.status === 'running' && state.startTime) ms = Date.now() - state.startTime;
+    else if(state.status === 'finished' && state.startTime && state.finishTime) ms = state.finishTime - state.startTime;
+    document.getElementById('timer-monitor').textContent = formatTime(ms);
+  }
+
+  function formatTime(ms) {
+    if(ms < 0) ms = 0;
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    const ms_frac = ms % 1000;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + '.' + String(ms_frac).padStart(3, '0');
+  }
+
+  function renderLeaderboard() {
+    const tbody = document.getElementById('leaderboard-body');
+    if(!leaderboard.length) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Belum ada data</td></tr>';
+      return;
+    }
+    tbody.innerHTML = leaderboard.map((l, index) => {
+      let rankClass = index === 0 ? 'rank-1' : (index === 1 ? 'rank-2' : (index === 2 ? 'rank-3' : ''));
+      return `<tr class="${rankClass}"><td>${index + 1}</td><td>${l.racer}</td><td style="font-family:var(--font-display);">${formatTime(l.duration)}</td></tr>`;
+    }).join('');
+  }
+</script>
+</body>
+</html>
