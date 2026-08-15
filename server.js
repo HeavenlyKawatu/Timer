@@ -7,6 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } }); 
 
+// Jalur Utama & /penonton dikunci khusus untuk penonton (Aman dari pembajakan)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'penonton.html'));
 });
@@ -15,8 +16,8 @@ app.get('/penonton', (req, res) => {
     res.sendFile(path.join(__dirname, 'penonton.html'));
 });
 
-
-app.get('/panitia-24', (req, res) => {
+// Jalur Admin Rahasia (Hanya panitia yang tahu link ini)
+app.get('/panitia-rahasia-99', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
@@ -59,22 +60,22 @@ io.on('connection', (socket) => {
         io.emit('sync_leaderboard', leaderboard);
     });
 
-socket.on('reset_timer', () => {
-    state = { status: 'idle', startTime: null, finishTime: null, racer: '' };
-    io.emit('sync_state', state);
-});
+    // Reset Waktu (Hanya mereset timer aktif, leaderboard aman)
+    socket.on('reset_timer', () => {
+        state = { status: 'idle', startTime: null, finishTime: null, racer: '' };
+        io.emit('sync_state', state);
+    });
 
-socket.on('reset_system', () => {
-    state = { status: 'idle', startTime: null, finishTime: null, racer: '' };
-    leaderboard = []; 
-    io.emit('sync_state', state);
-    io.emit('sync_leaderboard', leaderboard);
-});
+    // Reset Sistem (Mereset timer sekaligus menghapus leaderboard)
+    socket.on('reset_system', () => {
+        state = { status: 'idle', startTime: null, finishTime: null, racer: '' };
+        leaderboard = []; 
+        io.emit('sync_state', state);
+        io.emit('sync_leaderboard', leaderboard);
+    });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server berjalan di port ${PORT}`);
-    console.log(`IP-LAPTOP-HOST/panitia-24`);
 });
-
