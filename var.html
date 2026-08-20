@@ -16,21 +16,22 @@
   .recording-dot { width: 12px; height: 12px; background: var(--red); border-radius: 50%; display: none; }
   .recording-dot.active { display: block; animation: blink 1s infinite; }
   @keyframes blink { 50% { opacity: 0; } }
-  .controls { margin-top: 20px; display: flex; gap: 15px; }
+  .controls { margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
   button { padding: 12px 20px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
   .btn-green { background: var(--green); color: #000; }
-  .btn-blue { background: #2196F3; color: #fff; text-decoration: none; display: inline-block; padding: 10px 18px; border-radius: 6px; font-weight: bold; }
+  .btn-blue { background: #2196F3; color: #fff; text-decoration: none; display: inline-block; padding: 10px 18px; border-radius: 8px; font-weight: bold; }
   #replay-container { display: none; width: 90%; max-width: 800px; margin-top: 20px; text-align: center; background: var(--panel); padding: 15px; border-radius: 8px; border: 1px solid #2b2b30; }
   #replay-vid { width: 100%; border-radius: 8px; border: 2px solid var(--accent); margin-bottom: 15px; }
   .upload-status { margin-top: 10px; font-size: 0.9rem; color: #aaa; }
+  .stream-status { font-size: 0.85rem; color: var(--green); margin-top: 5px; }
 </style>
 </head>
 <body>
 
-<div class="header">📸 SISTEM VAR & PHOTO FINISH (SINKRON LOKAL)</div>
+<div class="header">📸 SISTEM VAR & PHOTO FINISH (HD WEBRTC STREAM)</div>
 
 <div class="controls" id="setup-controls">
-  <button class="btn-green" onclick="startCamera()">Nyalakan Kamera VAR</button>
+  <button class="btn-green" onclick="startCamera()">Nyalakan Kamera VAR & Live Stream</button>
 </div>
 
 <video id="raw-video" autoplay muted playsinline></video>
@@ -42,6 +43,8 @@
     <span id="cam-status">Kamera Aktif - Menunggu Start</span>
   </div>
 </div>
+
+<div class="stream-status" id="stream-info">Status Live Stream: Belum Aktif</div>
 
 <div id="replay-container">
   <h3 style="color:var(--accent); margin-top: 0;">Replay Hasil Rekaman VAR:</h3>
@@ -59,21 +62,59 @@
   
   let mediaRecorder;
   let recordedChunks = [];
+  let peerConnection;
+  let canvasStream;
+
   const rawVideo = document.getElementById('raw-video');
   const canvas = document.getElementById('live-canvas');
   const ctx = canvas.getContext('2d');
   const recDot = document.getElementById('rec-dot');
   const camStatus = document.getElementById('cam-status');
   const uploadStatus = document.getElementById('upload-status');
+  const streamInfo = document.getElementById('stream-info');
 
   let currentTimerText = "00:00.000";
 
-  async function startCamera() {
+  // Konfigurasi STUN Server gratis (agar bisa tembus jaringan internet/online jika diperlukan)
+  const rtcConfig = {
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  };
+
+async function startCamera() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "environment", width: 1280, height: 720, frameRate: { ideal: 60 } }, 
-          audio: false 
-      });
+      let stream = null;
+
+      // Percobaan 1: Prioritas pertama mencoba resolusi tinggi Full HD (cocok untuk Webcam C920 atau Laptop kelas atas)
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+          audio: false
+        });
+      } catch (e1) {
+        console.log("Resolusi 1080p tidak didukung, mencoba resolusi HD 720p...");
+      }
+
+      // Percobaan 2: Jika 1920x1080 gagal, coba resolusi standar HD 720p (Ideal untuk Kamera HP belakang atau Webcam standar)
+      if (!stream) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+            audio: false
+          });
+        } catch (e2) {
+          console.log("Resolusi HD gagal, mencoba kamera default perangkat...");
+        }
+      }
+
+      // Percobaan 3: Pilihan terakhir menggunakan kamera bawaan apa saja yang tersedia (Webcam laptop biasa / HP depan)
+      if (!stream) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
+
+      // Jika semua percobaan berhasil mendapatkan stream
       rawVideo.srcObject = stream;
       
       rawVideo.onloadedmetadata = () => {
@@ -85,7 +126,8 @@
       document.getElementById('setup-controls').style.display = 'none';
       document.getElementById('live-container').style.display = 'block';
 
-      const canvasStream = canvas.captureStream(60); 
+      // Ambil stream dari canvas untuk rekaman & live streaming (30 fps stabil untuk semua perangkat)
+      canvasStream = canvas.captureStream(30); 
       mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp8' });
 
       mediaRecorder.ondataavailable = (event) => {
@@ -96,11 +138,9 @@
         const superBuffer = new Blob(recordedChunks, { type: 'video/webm' });
         const videoURL = window.URL.createObjectURL(superBuffer);
         
-        // Tampilkan replay lokal
         const replayVid = document.getElementById('replay-vid');
         replayVid.src = videoURL;
         
-        // Set link download
         const downloadBtn = document.getElementById('download-btn');
         downloadBtn.href = videoURL;
         downloadBtn.download = `VAR_${Date.now()}.webm`;
@@ -108,14 +148,64 @@
         document.getElementById('replay-container').style.display = 'block';
         camStatus.textContent = "Rekaman Selesai!";
 
-        // Otomatis Upload ke Server
         uploadToServer(superBuffer);
       };
 
+      // Jalankan WebRTC Live Broadcast ke penonton
+      initWebRTCBroadcast();
+
     } catch (err) {
-      alert("Gagal mengakses kamera!\n\nJika mengakses dari HP via IP lokal, pastikan menggunakan Chrome dan beri izin akses kamera.");
+      alert("Gagal mengakses kamera!\n\nPastikan perangkat kamera terhubung dengan benar dan berikan izin (permission) akses kamera pada browser.");
       console.error(err);
     }
+  }
+
+  // --- WEBRTC BROADCAST SETUP ---
+  function initWebRTCBroadcast() {
+    socket.emit('var_ready_to_stream');
+    streamInfo.textContent = "Status Live Stream: Menghubungkan ke Penonton...";
+
+    socket.on('request_offer', async () => {
+      try {
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        
+        // Masukkan stream canvas ke WebRTC
+        canvasStream.getTracks().forEach(track => peerConnection.addTrack(track, canvasStream));
+
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit('wrtc_candidate', event.candidate);
+          }
+        };
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit('wrtc_offer', offer);
+        
+        streamInfo.textContent = "Status Live Stream: 🟢 Berjalan HD (Live)";
+        streamInfo.style.color = "var(--green)";
+      } catch (err) {
+        console.error("WebRTC Offer error:", err);
+        streamInfo.textContent = "Status Live Stream: Gagal terhubung";
+        streamInfo.style.color = "var(--red)";
+      }
+    });
+
+    socket.on('wrtc_answer', async (answer) => {
+      if (peerConnection) {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      }
+    });
+
+    socket.on('wrtc_candidate', async (candidate) => {
+      if (peerConnection && candidate) {
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.error("Error adding received ice candidate", e);
+        }
+      }
+    });
   }
 
   async function uploadToServer(blobData) {

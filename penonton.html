@@ -17,17 +17,72 @@
   .checker{height:7px;width:100%;flex:none;background-image:linear-gradient(45deg,var(--line) 25%,transparent 25%,transparent 75%,var(--line) 75%),linear-gradient(45deg,var(--line) 25%,transparent 25%,transparent 75%,var(--line) 75%);background-size:14px 14px;background-position:0 0,7px 7px;opacity:.6;}
   .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);}
   .panel-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;padding:22px 20px 44px;text-align:center;}
-  .timer{font-family:var(--font-display);font-weight:800;font-size:4.6rem;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--amber);}
-  .tree-container{display:flex;flex-direction:column;gap:8px;background:var(--panel-alt);padding:15px;border-radius:12px;border:2px solid var(--line);transform:scale(0.9);}
-  .light-row{display:flex;gap:12px;justify-content:center;}
-  .light{width:30px;height:30px;border-radius:50%;background:#111;border:2px solid var(--line);transition:all 0.1s;}
-  .light.on-red{background:var(--stop);box-shadow:0 0 15px var(--stop);}
-  .light.on-yellow{background:var(--amber);box-shadow:0 0 15px var(--amber);}
-  .light.on-green{background:var(--go);box-shadow:0 0 25px var(--go);}
-  .countdown-text{font-size:2rem;font-family:var(--font-display);color:var(--amber);margin-top:10px;height:40px;}
-  .history-table{width:100%;max-width:500px;border-collapse:collapse;margin-top:10px;}
+  
+  /* Layout Utama: Kiri Video Live VAR, Kanan Timer & Papan Skor */
+  .monitor-grid {
+    display: flex;
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .video-section {
+    flex: 1;
+    min-width: 320px;
+    max-width: 600px;
+    background: var(--panel-alt);
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  #live-stream {
+    width: 100%;
+    display: block;
+    background: #000;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+  }
+  .stream-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--go);
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stream-dot { width: 8px; height: 8px; background: var(--go); border-radius: 50%; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .info-section {
+    flex: 1;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .timer{font-family:var(--font-display);font-weight:800;font-size:3.8rem;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--amber);}
+  .tree-container{display:flex;flex-direction:column;gap:6px;background:var(--panel-alt);padding:12px;border-radius:12px;border:2px solid var(--line);transform:scale(0.85);}
+  .light-row{display:flex;gap:10px;justify-content:center;}
+  .light{width:26px;height:26px;border-radius:50%;background:#111;border:2px solid var(--line);transition:all 0.1s;}
+  .light.on-red{background:var(--stop);box-shadow:0 0 12px var(--stop);}
+  .light.on-yellow{background:var(--amber);box-shadow:0 0 12px var(--amber);}
+  .light.on-green{background:var(--go);box-shadow:0 0 20px var(--go);}
+  .countdown-text{font-size:1.6rem;font-family:var(--font-display);color:var(--amber);height:30px;}
+  
+  .history-table{width:100%;border-collapse:collapse;margin-top:5px;background:var(--panel-alt);border-radius:8px;overflow:hidden;border:1px solid var(--line);}
   .history-table th, .history-table td{padding:10px;border-bottom:1px solid var(--line);text-align:left;}
-  .history-table th{color:var(--amber);}
+  .history-table th{color:var(--amber);background:var(--panel);}
   .rank-1{color:var(--amber);font-weight:bold;}
   .rank-2{color:#C0C0C0;}
   .rank-3{color:#CD7F32;}
@@ -38,26 +93,43 @@
 <div class="screen">
   <div class="checker"></div>
   <div class="panel-header">
-    <span style="font-family:var(--font-head);color:var(--amber);font-size:1.2rem;">🏆 LIVE TIMER & LEADERBOARD</span>
+    <span style="font-family:var(--font-head);color:var(--amber);font-size:1.2rem;">🏆 LIVE MONITOR & STREAMING VAR</span>
     <span id="conn-status" style="color:var(--dim)">Menghubungkan...</span>
   </div>
+  
   <div class="panel-body">
-    <div class="tree-container">
-      <div class="light-row"><div class="light" id="l-red-m"></div></div>
-      <div class="light-row"><div class="light" id="l-yel-m1"></div><div class="light" id="l-yel-m2"></div></div>
-      <div class="light-row"><div class="light" id="l-grn-m"></div></div>
-    </div>
-    <div class="countdown-text" id="cd-text">MENUNGGU</div>
-    <div class="timer" id="timer-monitor">00:00.000</div>
-    
-    <div style="width:100%;max-width:500px;text-align:left;margin-top:10px;">
-      <h3 style="font-family:var(--font-head);">PAPAN SKOR TERCEPAT</h3>
-      <table class="history-table">
-        <thead><tr><th>Pos</th><th>Peserta</th><th>Waktu</th></tr></thead>
-        <tbody id="leaderboard-body">
-          <tr><td colspan="3" style="text-align:center;">Belum ada data</td></tr>
-        </tbody>
-      </table>
+    <div class="monitor-grid">
+      
+      <!-- KOTAK VIDEO LIVE STREAMING DARI HP VAR -->
+      <div class="video-section">
+        <div class="stream-badge">
+          <div class="stream-dot"></div>
+          <span id="stream-status-text">MENUNGGU KAMERA VAR...</span>
+        </div>
+        <video id="live-stream" autoplay playsinline muted></video>
+      </div>
+
+      <!-- KOTAK TIMER & LAMPU START -->
+      <div class="info-section">
+        <div class="tree-container">
+          <div class="light-row"><div class="light" id="l-red-m"></div></div>
+          <div class="light-row"><div class="light" id="l-yel-m1"></div><div class="light" id="l-yel-m2"></div></div>
+          <div class="light-row"><div class="light" id="l-grn-m"></div></div>
+        </div>
+        <div class="countdown-text" id="cd-text">MENUNGGU</div>
+        <div class="timer" id="timer-monitor">00:00.000</div>
+        
+        <div style="width:100%;text-align:left;">
+          <h3 style="font-family:var(--font-head); margin: 0 0 8px 0;">PAPAN SKOR TERCEPAT</h3>
+          <table class="history-table">
+            <thead><tr><th>Pos</th><th>Peserta</th><th>Waktu</th></tr></thead>
+            <tbody id="leaderboard-body">
+              <tr><td colspan="3" style="text-align:center;">Belum ada data</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -66,6 +138,14 @@
   const socket = io(); 
   let state = { status: 'idle', startTime: null, finishTime: null };
   let leaderboard = [];
+  let peerConnection;
+
+  const rtcConfig = {
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  };
+
+  const liveVideo = document.getElementById('live-stream');
+  const streamStatusText = document.getElementById('stream-status-text');
 
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   const audioCtx = new AudioContext();
@@ -89,6 +169,52 @@
 
   socket.on('connect', () => { document.getElementById('conn-status').textContent = '🟢 Online'; });
   socket.on('disconnect', () => { document.getElementById('conn-status').textContent = '🔴 Offline'; });
+
+  // --- WEBRTC RECEIVER SETUP (MENERIMA STREAM DARI VAR) ---
+  socket.on('var_ready_to_stream', () => {
+    streamStatusText.textContent = "menghubungkan siaran...";
+    socket.emit('viewer_request_stream');
+  });
+
+  socket.on('wrtc_offer', async (offer) => {
+    try {
+      peerConnection = new RTCPeerConnection(rtcConfig);
+
+      peerConnection.ontrack = (event) => {
+        if (liveVideo.srcObject !== event.streams[0]) {
+          liveVideo.srcObject = event.streams[0];
+          streamStatusText.textContent = "LIVE HD (CLEAR)";
+          streamStatusText.style.color = "var(--go)";
+        }
+      };
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('wrtc_candidate', event.candidate);
+        }
+      };
+
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      socket.emit('wrtc_answer', answer);
+    } catch (err) {
+      console.error("WebRTC Answer error:", err);
+      streamStatusText.textContent = "GAGAL STREAM";
+      streamStatusText.style.color = "var(--stop)";
+    }
+  });
+
+  socket.on('wrtc_candidate', async (candidate) => {
+    if (peerConnection && candidate) {
+      try {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.error("Error adding received ice candidate", e);
+      }
+    }
+  });
+  // --------------------------------------------------------
 
   socket.on('sync_state', (newState) => {
     state = newState;

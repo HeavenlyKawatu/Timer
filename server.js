@@ -58,6 +58,7 @@ io.on('connection', (socket) => {
     socket.emit('sync_state', state);
     socket.emit('sync_leaderboard', leaderboard);
 
+    // --- KONTROL TIMER & BALAPAN ---
     socket.on('start_countdown', (racerName) => {
         if(state.status !== 'idle') return;
         state.status = 'countdown';
@@ -98,6 +99,27 @@ io.on('connection', (socket) => {
         io.emit('sync_state', state);
         io.emit('sync_leaderboard', leaderboard);
     });
+
+    // --- WEBRTC SIGNALING (LIVE STREAMING VAR KE PENONTON) ---
+    socket.on('var_ready_to_stream', () => {
+        socket.broadcast.emit('var_ready_to_stream');
+    });
+
+    socket.on('viewer_request_stream', () => {
+        socket.broadcast.emit('request_offer');
+    });
+
+    socket.on('wrtc_offer', (offer) => {
+        socket.broadcast.emit('wrtc_offer', offer);
+    });
+
+    socket.on('wrtc_answer', (answer) => {
+        socket.broadcast.emit('wrtc_answer', answer);
+    });
+
+    socket.on('wrtc_candidate', (candidate) => {
+        socket.broadcast.emit('wrtc_candidate', candidate);
+    });
 });
 
 // Deteksi IP Address Wi-Fi Lokal secara Otomatis
@@ -121,7 +143,7 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`==================================================`);
     console.log(`📍 Laptop Server    : http://localhost:${PORT}`);
     console.log(`📍 HP/Device Lain   : http://${localIp}:${PORT}`);
-    console.log(`🔑 Admin Panitia    : http://${localIp}:${PORT}/panitia-rahasia-99`);
+    console.log(`🔑 Admin Panitia    : http://${localIp}:${PORT}/panitia-24`);
     console.log(`📸 Kamera VAR       : http://${localIp}:${PORT}/var`);
     console.log(`==================================================\n`);
 });
