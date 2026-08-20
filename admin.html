@@ -4,17 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin - Pro Timer Lomba Motor</title>
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Menggunakan Socket.io Lokal Server -->
+<script src="/socket.io/socket.io.js"></script>
 <style>
   :root{
     --asphalt:#0b0b0d; --panel:#17171a; --panel-alt:#1d1d21; --line:#2b2b30;
     --chrome:#f1f1ef; --dim:#87878e; --amber:#ffb400; --go:#14d97a; --stop:#ef1f3a;
     --radius:16px;
-    --font-display:'Orbitron',monospace; --font-head:'Barlow Condensed',sans-serif; --font-body:'Barlow',-apple-system,sans-serif;
+    --font-display:'Orbitron', 'Courier New', monospace; --font-head:'Barlow Condensed', 'Arial Narrow', sans-serif; --font-body:'Barlow', system-ui, sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--asphalt);color:var(--chrome);font-family:var(--font-body);min-height:100vh;}
@@ -45,7 +42,7 @@
   .rank-3{color:#CD7F32;}
   .tools-row{display:flex;gap:10px;justify-content:center;margin-top:20px;}
   .btn-sm{padding:8px 12px;background:var(--line);color:#fff;border:none;border-radius:8px;cursor:pointer;}
-  #qrcode{background:#fff;padding:10px;border-radius:8px;margin-top:10px;}
+  #qr-text-link{background:#fff;color:#000;padding:12px;border-radius:8px;font-weight:bold;word-break:break-all;margin-top:10px;}
 </style>
 </head>
 <body>
@@ -76,7 +73,7 @@
       <div class="timer" id="timer-start">00:00.000</div>
       
       <input type="text" id="racer-name" placeholder="Nama Peserta / Nomor" style="padding:15px;width:100%;max-width:320px;border-radius:8px;">
-      <button class="action-btn action-start" id="btn-start" onclick="triggerCountdown()">MULAI</button>
+      <button class="action-btn action-start" id="btn-start" onclick="triggerCountdown()">MULAI (3-2-1)</button>
       
       <div style="display:flex;gap:10px;margin-top:10px;width:100%;max-width:320px;">
         <button class="btn-sm" style="background:var(--amber);color:#000;flex:1;padding:12px;font-weight:600;" onclick="resetTimer()">🔄 Reset Waktu</button>
@@ -112,7 +109,7 @@
       <div class="timer timer-lg" id="timer-monitor" style="color:var(--amber);">00:00.000</div>
       
       <div style="width:100%;max-width:500px;text-align:left;margin-top:10px;">
-        <h3 style="font-family:var(--font-head);">🏆 LIVE LEADERBOARD (TERCEPAT)</h3>
+        <h3 style="font-family:var(--font-head);">🏆 LIVE LEADERBOARD</h3>
         <table class="history-table">
           <thead><tr><th>Pos</th><th>Peserta</th><th>Waktu</th></tr></thead>
           <tbody id="leaderboard-body">
@@ -123,12 +120,13 @@
 
       <div class="tools-row">
         <button class="btn-sm" style="background:#1d6f42;" onclick="exportCSV()">📥 Export Excel (CSV)</button>
-        <button class="btn-sm" onclick="document.getElementById('qr-modal').style.display='block'">📱 QR Penonton</button>
+        <button class="btn-sm" onclick="document.getElementById('qr-modal').style.display='block'">📱 Link Penonton</button>
       </div>
 
-      <div id="qr-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--panel);padding:20px;border-radius:12px;border:2px solid var(--line);z-index:99;">
-        <h3 style="margin-top:0;font-family:var(--font-head);">Scan untuk Penonton</h3>
-        <div id="qrcode"></div>
+      <div id="qr-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--panel);padding:20px;border-radius:12px;border:2px solid var(--line);z-index:99;width:90%;max-width:350px;">
+        <h3 style="margin-top:0;font-family:var(--font-head);">Akses Penonton Lokal</h3>
+        <p style="font-size:0.9rem;color:var(--dim);">Minta penonton menghubungkan Wi-Fi yang sama dan buka link ini:</p>
+        <div id="qr-text-link"></div>
         <button class="btn-sm" style="width:100%;margin-top:15px;background:var(--stop);" onclick="document.getElementById('qr-modal').style.display='none'">Tutup</button>
       </div>
     </div>
@@ -168,8 +166,8 @@
     socket = io();
     
     socket.on('connect', () => {
-      document.getElementById('conn-' + role).textContent = '🟢 Online';
-      if(role === 'monitor') generateQR();
+      document.getElementById('conn-' + role).textContent = '🟢 Online (Lokal)';
+      if(role === 'monitor') generateLink();
     });
 
     socket.on('disconnect', () => {
@@ -194,12 +192,10 @@
     socket.emit('trigger_finish', Date.now());
   }
 
-  function resetTimer() {
-    socket.emit('reset_timer');
-  }
+  function resetTimer() { socket.emit('reset_timer'); }
 
   function confirmResetSystem() {
-    if(confirm('PERINGATAN: Semua data leaderboard dan riwayat juara akan terhapus permanen. Lanjutkan?')) {
+    if(confirm('PERINGATAN: Semua data leaderboard akan terhapus. Lanjutkan?')) {
       socket.emit('reset_system');
     }
   }
@@ -262,11 +258,9 @@
     window.URL.revokeObjectURL(url);
   }
 
-  function generateQR() {
-    const qrContainer = document.getElementById("qrcode");
-    qrContainer.innerHTML = "";
+  function generateLink() {
     const viewUrl = window.location.origin + '/penonton'; 
-    new QRCode(qrContainer, { text: viewUrl, width: 150, height: 150, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
+    document.getElementById('qr-text-link').textContent = viewUrl;
   }
 </script>
 </body>

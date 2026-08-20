@@ -4,15 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Live Monitor - Lomba Motor</title>
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
 <style>
   :root{
     --asphalt:#0b0b0d; --panel:#17171a; --panel-alt:#1d1d21; --line:#2b2b30;
     --chrome:#f1f1ef; --dim:#87878e; --amber:#ffb400; --go:#14d97a; --stop:#ef1f3a;
-    --font-display:'Orbitron',monospace; --font-head:'Barlow Condensed',sans-serif; --font-body:'Barlow',-apple-system,sans-serif;
+    --font-display:'Orbitron', 'Courier New', monospace; --font-head:'Barlow Condensed', 'Arial Narrow', sans-serif; --font-body:'Barlow', system-ui, sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--asphalt);color:var(--chrome);font-family:var(--font-body);min-height:100vh;}
@@ -90,12 +87,8 @@
     }
   }
 
-  socket.on('connect', () => {
-    document.getElementById('conn-status').textContent = '🟢 Online';
-  });
-  socket.on('disconnect', () => {
-    document.getElementById('conn-status').textContent = '🔴 Offline';
-  });
+  socket.on('connect', () => { document.getElementById('conn-status').textContent = '🟢 Online'; });
+  socket.on('disconnect', () => { document.getElementById('conn-status').textContent = '🔴 Offline'; });
 
   socket.on('sync_state', (newState) => {
     state = newState;
@@ -107,9 +100,7 @@
     renderLeaderboard();
   });
 
-  socket.on('countdown_step', (step) => {
-    runChristmasTree(step);
-  });
+  socket.on('countdown_step', (step) => { runChristmasTree(step); });
 
   setInterval(tick, 10);
 

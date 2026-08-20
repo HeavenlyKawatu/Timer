@@ -2,31 +2,59 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const os = require('os');
+const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } }); 
+const io = new Server(server, { cors: { origin: "*" } });
 
-// Jalur Utama & /penonton dikunci khusus untuk penonton (Aman dari pembajakan)
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'penonton.html'));
+// Pastikan folder uploads tersedia untuk menyimpan rekaman video
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Konfigurasi Multer untuk penamaan dan lokasi simpan video VAR
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, `VAR_${Date.now()}.webm`);
+    }
 });
 
-app.get('/penonton', (req, res) => {
-    res.sendFile(path.join(__dirname, 'penonton.html'));
-});
+const upload = multer({ storage: storage });
 
-// Jalur Admin Rahasia (Hanya panitia yang tahu link ini)
-app.get('/panitia-24', (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin.html'));
+// Melayani file statis & folder rekaman video
+app.use(express.static(path.join(__dirname)));
+app.use('/uploads', express.static(uploadDir));
+
+// Jalur Halaman
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'penonton.html')));
+app.get('/penonton', (req, res) => res.sendFile(path.join(__dirname, 'penonton.html')));
+app.get('/panitia-rahasia-99', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/var', (req, res) => res.sendFile(path.join(__dirname, 'var.html')));
+
+// Endpoint API Upload Video VAR dari HP Kamera
+app.post('/upload-var', upload.single('video'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ success: false, message: 'Tidak ada berkas yang diunggah' });
+    }
+    console.log(`\n[VAR] Video berhasil disimpan: ${req.file.filename}`);
+    res.json({ 
+        success: true, 
+        filename: req.file.filename, 
+        url: `/uploads/${req.file.filename}` 
+    });
 });
 
 let state = { status: 'idle', startTime: null, finishTime: null, racer: '' };
 let leaderboard = [];
 
 io.on('connection', (socket) => {
-    console.log('Klien terhubung:', socket.id);
-    
     socket.emit('sync_state', state);
     socket.emit('sync_leaderboard', leaderboard);
 
@@ -50,7 +78,6 @@ io.on('connection', (socket) => {
 
     socket.on('trigger_finish', (clientTimestamp) => {
         if(state.status !== 'running') return;
-        
         state.status = 'finished';
         state.finishTime = clientTimestamp || Date.now(); 
         io.emit('sync_state', state);
@@ -60,13 +87,11 @@ io.on('connection', (socket) => {
         io.emit('sync_leaderboard', leaderboard);
     });
 
-    // Reset Waktu (Hanya mereset timer aktif, leaderboard aman)
     socket.on('reset_timer', () => {
         state = { status: 'idle', startTime: null, finishTime: null, racer: '' };
         io.emit('sync_state', state);
     });
 
-    // Reset Sistem (Mereset timer sekaligus menghapus leaderboard)
     socket.on('reset_system', () => {
         state = { status: 'idle', startTime: null, finishTime: null, racer: '' };
         leaderboard = []; 
@@ -75,7 +100,28 @@ io.on('connection', (socket) => {
     });
 });
 
+// Deteksi IP Address Wi-Fi Lokal secara Otomatis
+function getLocalIp() {
+    const interfaces = os.networkInterfaces();
+    for (let name in interfaces) {
+        for (let iface of interfaces[name]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return '127.0.0.1';
+}
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server berjalan di port ${PORT}`);
+    const localIp = getLocalIp();
+    console.log(`\n==================================================`);
+    console.log(`🚀 SERVER TIMER & VAR LOKAL BERHASIL AKTIF!`);
+    console.log(`==================================================`);
+    console.log(`📍 Laptop Server    : http://localhost:${PORT}`);
+    console.log(`📍 HP/Device Lain   : http://${localIp}:${PORT}`);
+    console.log(`🔑 Admin Panitia    : http://${localIp}:${PORT}/panitia-rahasia-99`);
+    console.log(`📸 Kamera VAR       : http://${localIp}:${PORT}/var`);
+    console.log(`==================================================\n`);
 });
