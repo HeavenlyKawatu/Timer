@@ -35,7 +35,7 @@ app.use('/uploads', express.static(uploadDir));
 // Jalur Halaman
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'penonton.html')));
 app.get('/penonton', (req, res) => res.sendFile(path.join(__dirname, 'penonton.html')));
-app.get('/panitia-rahasia-99', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/panitia-24', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
 app.get('/var', (req, res) => res.sendFile(path.join(__dirname, 'var.html')));
 
 // Endpoint API Upload Video VAR dari HP Kamera
