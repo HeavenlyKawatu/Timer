@@ -64,6 +64,7 @@
   let recordedChunks = [];
   let peerConnection;
   let canvasStream;
+  let localStream = null; // Menyimpan stream kamera asli untuk live streaming stabil
 
   const rawVideo = document.getElementById('raw-video');
   const canvas = document.getElementById('live-canvas');
@@ -75,16 +76,16 @@
 
   let currentTimerText = "00:00.000";
 
-  // Konfigurasi STUN Server gratis (agar bisa tembus jaringan internet/online jika diperlukan)
+  // Konfigurasi STUN Server untuk menembus jaringan cloud publik (Railway)
   const rtcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
   };
 
-async function startCamera() {
+  async function startCamera() {
     try {
       let stream = null;
 
-      // Percobaan 1: Prioritas pertama mencoba resolusi tinggi Full HD (cocok untuk Webcam C920 atau Laptop kelas atas)
+      // Percobaan 1: Resolusi Full HD
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
@@ -94,7 +95,7 @@ async function startCamera() {
         console.log("Resolusi 1080p tidak didukung, mencoba resolusi HD 720p...");
       }
 
-      // Percobaan 2: Jika 1920x1080 gagal, coba resolusi standar HD 720p (Ideal untuk Kamera HP belakang atau Webcam standar)
+      // Percobaan 2: Resolusi HD 720p (Kamera Belakang HP / Webcam)
       if (!stream) {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
@@ -106,7 +107,7 @@ async function startCamera() {
         }
       }
 
-      // Percobaan 3: Pilihan terakhir menggunakan kamera bawaan apa saja yang tersedia (Webcam laptop biasa / HP depan)
+      // Percobaan 3: Kamera default apa saja
       if (!stream) {
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -114,7 +115,7 @@ async function startCamera() {
         });
       }
 
-      // Jika semua percobaan berhasil mendapatkan stream
+      localStream = stream; // Simpan stream kamera asli untuk WebRTC
       rawVideo.srcObject = stream;
       
       rawVideo.onloadedmetadata = () => {
@@ -126,7 +127,7 @@ async function startCamera() {
       document.getElementById('setup-controls').style.display = 'none';
       document.getElementById('live-container').style.display = 'block';
 
-      // Ambil stream dari canvas untuk rekaman & live streaming (30 fps stabil untuk semua perangkat)
+      // Ambil stream dari canvas untuk rekaman lokal (MediaRecorder)
       canvasStream = canvas.captureStream(30); 
       mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp8' });
 
@@ -160,7 +161,7 @@ async function startCamera() {
     }
   }
 
-  // --- WEBRTC BROADCAST SETUP ---
+  // --- WEBRTC BROADCAST SETUP (STABIL) ---
   function initWebRTCBroadcast() {
     socket.emit('var_ready_to_stream');
     streamInfo.textContent = "Status Live Stream: Menghubungkan ke Penonton...";
@@ -169,8 +170,10 @@ async function startCamera() {
       try {
         peerConnection = new RTCPeerConnection(rtcConfig);
         
-        // Masukkan stream canvas ke WebRTC
-        canvasStream.getTracks().forEach(track => peerConnection.addTrack(track, canvasStream));
+        // Mengirim stream asli kamera langsung agar tidak hitam di Railway
+        if (localStream) {
+          localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        }
 
         peerConnection.onicecandidate = (event) => {
           if (event.candidate) {
