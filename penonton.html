@@ -140,21 +140,9 @@
   let leaderboard = [];
   let peerConnection;
 
-  // Konfigurasi STUN & TURN Server lengkap untuk menembus jaringan cloud publik (Railway)
+  // Konfigurasi STUN Server untuk menembus jaringan cloud publik (Railway)
   const rtcConfig = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      {
-        urls: 'turn:openrelay.metered.ca:80',
-        username: 'openrelayproject',
-        credential: 'openrelayprojectsecret'
-      },
-      {
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
-        credential: 'openrelayprojectsecret'
-      }
-    ]
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
   };
 
   const liveVideo = document.getElementById('live-stream');
@@ -163,6 +151,7 @@
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   let audioCtx = null;
 
+  // Inisialisasi Audio Context interaksi pengguna agar suara aman berjalan di browser
   document.body.addEventListener('click', () => {
     if (!audioCtx) audioCtx = new AudioContext();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -188,10 +177,12 @@
 
   socket.on('connect', () => { 
     document.getElementById('conn-status').textContent = '🟢 Online'; 
+    // Minta stream jika VAR sudah siap sebelumnya
     socket.emit('viewer_request_stream');
   });
   socket.on('disconnect', () => { document.getElementById('conn-status').textContent = '🔴 Offline'; });
 
+  // --- WEBRTC RECEIVER SETUP (MENERIMA STREAM DARI VAR) ---
   socket.on('var_ready_to_stream', () => {
     streamStatusText.textContent = "menghubungkan siaran...";
     socket.emit('viewer_request_stream');
@@ -239,6 +230,7 @@
       }
     }
   });
+  // --------------------------------------------------------
 
   socket.on('sync_state', (newState) => {
     state = newState;
