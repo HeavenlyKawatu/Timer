@@ -64,7 +64,7 @@
   let recordedChunks = [];
   let peerConnection;
   let canvasStream;
-  let localStream = null; // Menyimpan stream kamera asli untuk live streaming stabil
+  let localStream = null;
 
   const rawVideo = document.getElementById('raw-video');
   const canvas = document.getElementById('live-canvas');
@@ -76,16 +76,27 @@
 
   let currentTimerText = "00:00.000";
 
-  // Konfigurasi STUN Server untuk menembus jaringan cloud publik (Railway)
+  // Konfigurasi STUN & TURN Server lengkap untuk menembus semua jenis jaringan / seluler
   const rtcConfig = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayprojectsecret'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayprojectsecret'
+      }
+    ]
   };
 
   async function startCamera() {
     try {
       let stream = null;
 
-      // Percobaan 1: Resolusi Full HD
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
@@ -95,7 +106,6 @@
         console.log("Resolusi 1080p tidak didukung, mencoba resolusi HD 720p...");
       }
 
-      // Percobaan 2: Resolusi HD 720p (Kamera Belakang HP / Webcam)
       if (!stream) {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
@@ -107,7 +117,6 @@
         }
       }
 
-      // Percobaan 3: Kamera default apa saja
       if (!stream) {
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -115,7 +124,7 @@
         });
       }
 
-      localStream = stream; // Simpan stream kamera asli untuk WebRTC
+      localStream = stream;
       rawVideo.srcObject = stream;
       
       rawVideo.onloadedmetadata = () => {
@@ -127,7 +136,6 @@
       document.getElementById('setup-controls').style.display = 'none';
       document.getElementById('live-container').style.display = 'block';
 
-      // Ambil stream dari canvas untuk rekaman lokal (MediaRecorder)
       canvasStream = canvas.captureStream(30); 
       mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp8' });
 
@@ -152,7 +160,6 @@
         uploadToServer(superBuffer);
       };
 
-      // Jalankan WebRTC Live Broadcast ke penonton
       initWebRTCBroadcast();
 
     } catch (err) {
@@ -161,16 +168,18 @@
     }
   }
 
-  // --- WEBRTC BROADCAST SETUP (STABIL) ---
   function initWebRTCBroadcast() {
     socket.emit('var_ready_to_stream');
     streamInfo.textContent = "Status Live Stream: Menghubungkan ke Penonton...";
 
     socket.on('request_offer', async () => {
       try {
+        if (peerConnection) {
+          peerConnection.close();
+        }
+
         peerConnection = new RTCPeerConnection(rtcConfig);
         
-        // Mengirim stream asli kamera langsung agar tidak hitam di Railway
         if (localStream) {
           localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
         }
