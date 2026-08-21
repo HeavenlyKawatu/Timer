@@ -6,24 +6,24 @@
 <title>Sistem Kamera VAR - Canvas Pro</title>
 <script src="/socket.io/socket.io.js"></script>
 <style>
-  :root { --bg: #0b0b0d; --panel: #17171a; --text: #f1f1ef; --accent: #ffb400; --red: #ef1f3a; --green: #14d97a; }
-  body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding-bottom: 40px; }
-  .header { width: 100%; padding: 15px; background: var(--panel); border-bottom: 2px solid #2b2b30; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--accent); }
-  .video-container { position: relative; width: 90%; max-width: 800px; margin-top: 20px; background: #000; border: 3px solid #2b2b30; border-radius: 8px; }
-  canvas { width: 100%; display: block; }
-  video { display: none; }
-  .status-badge { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 5px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-  .recording-dot { width: 12px; height: 12px; background: var(--red); border-radius: 50%; display: none; }
-  .recording-dot.active { display: block; animation: blink 1s infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
-  .controls { margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
-  button { padding: 12px 20px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
-  .btn-green { background: var(--green); color: #000; }
-  .btn-blue { background: #2196F3; color: #fff; text-decoration: none; display: inline-block; padding: 10px 18px; border-radius: 8px; font-weight: bold; }
-  #replay-container { display: none; width: 90%; max-width: 800px; margin-top: 20px; text-align: center; background: var(--panel); padding: 15px; border-radius: 8px; border: 1px solid #2b2b30; }
-  #replay-vid { width: 100%; border-radius: 8px; border: 2px solid var(--accent); margin-bottom: 15px; }
-  .upload-status { margin-top: 10px; font-size: 0.9rem; color: #aaa; }
-  .stream-status { font-size: 0.85rem; color: var(--green); margin-top: 5px; }
+  :root { --bg: #0b0b0d; --panel: #17171a; --text: #f1f1ef; --accent: #ffb400; --red: #ef1f3a; --green: #14d97a; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding-bottom: 40px; }
+  .header { width: 100%; padding: 15px; background: var(--panel); border-bottom: 2px solid #2b2b30; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--accent); }
+  .video-container { position: relative; width: 90%; max-width: 800px; margin-top: 20px; background: #000; border: 3px solid #2b2b30; border-radius: 8px; }
+  canvas { width: 100%; display: block; }
+  video { display: none; }
+  .status-badge { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 5px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+  .recording-dot { width: 12px; height: 12px; background: var(--red); border-radius: 50%; display: none; }
+  .recording-dot.active { display: block; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .controls { margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+  button { padding: 12px 20px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-blue { background: #2196F3; color: #fff; text-decoration: none; display: inline-block; padding: 10px 18px; border-radius: 8px; font-weight: bold; }
+  #replay-container { display: none; width: 90%; max-width: 800px; margin-top: 20px; text-align: center; background: var(--panel); padding: 15px; border-radius: 8px; border: 1px solid #2b2b30; }
+  #replay-vid { width: 100%; border-radius: 8px; border: 2px solid var(--accent); margin-bottom: 15px; }
+  .upload-status { margin-top: 10px; font-size: 0.9rem; color: #aaa; }
+  .stream-status { font-size: 0.85rem; color: var(--green); margin-top: 5px; }
 </style>
 </head>
 <body>
@@ -31,283 +31,274 @@
 <div class="header">📸 SISTEM VAR & PHOTO FINISH (HD WEBRTC STREAM)</div>
 
 <div class="controls" id="setup-controls">
-  <button class="btn-green" onclick="startCamera()">Nyalakan Kamera VAR & Live Stream</button>
+  <button class="btn-green" onclick="startCamera()">Nyalakan Kamera VAR & Live Stream</button>
 </div>
 
 <video id="raw-video" autoplay muted playsinline></video>
 
 <div class="video-container" id="live-container" style="display:none;">
-  <canvas id="live-canvas"></canvas>
-  <div class="status-badge">
-    <div class="recording-dot" id="rec-dot"></div>
-    <span id="cam-status">Kamera Aktif - Menunggu Start</span>
-  </div>
+  <canvas id="live-canvas"></canvas>
+  <div class="status-badge">
+    <div class="recording-dot" id="rec-dot"></div>
+    <span id="cam-status">Kamera Aktif - Menunggu Start</span>
+  </div>
 </div>
 
 <div class="stream-status" id="stream-info">Status Live Stream: Belum Aktif</div>
 
 <div id="replay-container">
-  <h3 style="color:var(--accent); margin-top: 0;">Replay Hasil Rekaman VAR:</h3>
-  <video id="replay-vid" controls></video>
-  
-  <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-    <a id="download-btn" class="btn-blue" download="rekaman_var.webm">💾 Download Rekaman (HP)</a>
-  </div>
-  <div class="upload-status" id="upload-status">Memproses unggahan ke server...</div>
+  <h3 style="color:var(--accent); margin-top: 0;">Replay Hasil Rekaman VAR:</h3>
+  <video id="replay-vid" controls></video>
+  
+  <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+    <a id="download-btn" class="btn-blue" download="rekaman_var.webm">💾 Download Rekaman (HP)</a>
+  </div>
+  <div class="upload-status" id="upload-status">Memproses unggahan ke server...</div>
 </div>
 
 <script>
-  const socket = io();
-  let state = { status: 'idle', startTime: null, finishTime: null };
-  
-  let mediaRecorder;
-  let recordedChunks = [];
-  let peerConnection;
-  let canvasStream;
-  let localStream = null;
+  const socket = io();
+  let state = { status: 'idle', startTime: null, finishTime: null };
+  
+  let mediaRecorder;
+  let recordedChunks = [];
+  let peerConnection;
+  let canvasStream;
+  let localStream = null; // Menyimpan stream kamera asli untuk live streaming stabil
 
-  const rawVideo = document.getElementById('raw-video');
-  const canvas = document.getElementById('live-canvas');
-  const ctx = canvas.getContext('2d');
-  const recDot = document.getElementById('rec-dot');
-  const camStatus = document.getElementById('cam-status');
-  const uploadStatus = document.getElementById('upload-status');
-  const streamInfo = document.getElementById('stream-info');
+  const rawVideo = document.getElementById('raw-video');
+  const canvas = document.getElementById('live-canvas');
+  const ctx = canvas.getContext('2d');
+  const recDot = document.getElementById('rec-dot');
+  const camStatus = document.getElementById('cam-status');
+  const uploadStatus = document.getElementById('upload-status');
+  const streamInfo = document.getElementById('stream-info');
 
-  let currentTimerText = "00:00.000";
+  let currentTimerText = "00:00.000";
 
-  // Konfigurasi STUN & TURN Server lengkap untuk menembus semua jenis jaringan / seluler
-  const rtcConfig = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      {
-        urls: 'turn:openrelay.metered.ca:80',
-        username: 'openrelayproject',
-        credential: 'openrelayprojectsecret'
-      },
-      {
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
-        credential: 'openrelayprojectsecret'
-      }
-    ]
-  };
+  // Konfigurasi STUN Server untuk menembus jaringan cloud publik (Railway)
+  const rtcConfig = {
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  };
 
-  async function startCamera() {
-    try {
-      let stream = null;
+  async function startCamera() {
+    try {
+      let stream = null;
 
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
-          audio: false
-        });
-      } catch (e1) {
-        console.log("Resolusi 1080p tidak didukung, mencoba resolusi HD 720p...");
-      }
+      // Percobaan 1: Resolusi Full HD
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+          audio: false
+        });
+      } catch (e1) {
+        console.log("Resolusi 1080p tidak didukung, mencoba resolusi HD 720p...");
+      }
 
-      if (!stream) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-            audio: false
-          });
-        } catch (e2) {
-          console.log("Resolusi HD gagal, mencoba kamera default perangkat...");
-        }
-      }
+      // Percobaan 2: Resolusi HD 720p (Kamera Belakang HP / Webcam)
+      if (!stream) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+            audio: false
+          });
+        } catch (e2) {
+          console.log("Resolusi HD gagal, mencoba kamera default perangkat...");
+        }
+      }
 
-      if (!stream) {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
-        });
-      }
+      // Percobaan 3: Kamera default apa saja
+      if (!stream) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
 
-      localStream = stream;
-      rawVideo.srcObject = stream;
-      
-      rawVideo.onloadedmetadata = () => {
-          canvas.width = rawVideo.videoWidth;
-          canvas.height = rawVideo.videoHeight;
-          requestAnimationFrame(drawCanvas); 
-      };
+      localStream = stream; // Simpan stream kamera asli untuk WebRTC
+      rawVideo.srcObject = stream;
+      
+      rawVideo.onloadedmetadata = () => {
+          canvas.width = rawVideo.videoWidth;
+          canvas.height = rawVideo.videoHeight;
+          requestAnimationFrame(drawCanvas); 
+      };
 
-      document.getElementById('setup-controls').style.display = 'none';
-      document.getElementById('live-container').style.display = 'block';
+      document.getElementById('setup-controls').style.display = 'none';
+      document.getElementById('live-container').style.display = 'block';
 
-      canvasStream = canvas.captureStream(30); 
-      mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp8' });
+      // Ambil stream dari canvas untuk rekaman lokal (MediaRecorder)
+      canvasStream = canvas.captureStream(30); 
+      mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp8' });
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) recordedChunks.push(event.data);
-      };
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordedChunks.push(event.data);
+      };
 
-      mediaRecorder.onstop = () => {
-        const superBuffer = new Blob(recordedChunks, { type: 'video/webm' });
-        const videoURL = window.URL.createObjectURL(superBuffer);
-        
-        const replayVid = document.getElementById('replay-vid');
-        replayVid.src = videoURL;
-        
-        const downloadBtn = document.getElementById('download-btn');
-        downloadBtn.href = videoURL;
-        downloadBtn.download = `VAR_${Date.now()}.webm`;
+      mediaRecorder.onstop = () => {
+        const superBuffer = new Blob(recordedChunks, { type: 'video/webm' });
+        const videoURL = window.URL.createObjectURL(superBuffer);
+        
+        const replayVid = document.getElementById('replay-vid');
+        replayVid.src = videoURL;
+        
+        const downloadBtn = document.getElementById('download-btn');
+        downloadBtn.href = videoURL;
+        downloadBtn.download = `VAR_${Date.now()}.webm`;
 
-        document.getElementById('replay-container').style.display = 'block';
-        camStatus.textContent = "Rekaman Selesai!";
+        document.getElementById('replay-container').style.display = 'block';
+        camStatus.textContent = "Rekaman Selesai!";
 
-        uploadToServer(superBuffer);
-      };
+        uploadToServer(superBuffer);
+      };
 
-      initWebRTCBroadcast();
+      // Jalankan WebRTC Live Broadcast ke penonton
+      initWebRTCBroadcast();
 
-    } catch (err) {
-      alert("Gagal mengakses kamera!\n\nPastikan perangkat kamera terhubung dengan benar dan berikan izin (permission) akses kamera pada browser.");
-      console.error(err);
-    }
-  }
+    } catch (err) {
+      alert("Gagal mengakses kamera!\n\nPastikan perangkat kamera terhubung dengan benar dan berikan izin (permission) akses kamera pada browser.");
+      console.error(err);
+    }
+  }
 
-  function initWebRTCBroadcast() {
-    socket.emit('var_ready_to_stream');
-    streamInfo.textContent = "Status Live Stream: Menghubungkan ke Penonton...";
+  // --- WEBRTC BROADCAST SETUP (STABIL) ---
+  function initWebRTCBroadcast() {
+    socket.emit('var_ready_to_stream');
+    streamInfo.textContent = "Status Live Stream: Menghubungkan ke Penonton...";
 
-    socket.on('request_offer', async () => {
-      try {
-        if (peerConnection) {
-          peerConnection.close();
-        }
+    socket.on('request_offer', async () => {
+      try {
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        
+        // Mengirim stream asli kamera langsung agar tidak hitam di Railway
+        if (localStream) {
+          localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        }
 
-        peerConnection = new RTCPeerConnection(rtcConfig);
-        
-        if (localStream) {
-          localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-        }
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit('wrtc_candidate', event.candidate);
+          }
+        };
 
-        peerConnection.onicecandidate = (event) => {
-          if (event.candidate) {
-            socket.emit('wrtc_candidate', event.candidate);
-          }
-        };
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit('wrtc_offer', offer);
+        
+        streamInfo.textContent = "Status Live Stream: 🟢 Berjalan HD (Live)";
+        streamInfo.style.color = "var(--green)";
+      } catch (err) {
+        console.error("WebRTC Offer error:", err);
+        streamInfo.textContent = "Status Live Stream: Gagal terhubung";
+        streamInfo.style.color = "var(--red)";
+      }
+    });
 
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        socket.emit('wrtc_offer', offer);
-        
-        streamInfo.textContent = "Status Live Stream: 🟢 Berjalan HD (Live)";
-        streamInfo.style.color = "var(--green)";
-      } catch (err) {
-        console.error("WebRTC Offer error:", err);
-        streamInfo.textContent = "Status Live Stream: Gagal terhubung";
-        streamInfo.style.color = "var(--red)";
-      }
-    });
+    socket.on('wrtc_answer', async (answer) => {
+      if (peerConnection) {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      }
+    });
 
-    socket.on('wrtc_answer', async (answer) => {
-      if (peerConnection) {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-      }
-    });
+    socket.on('wrtc_candidate', async (candidate) => {
+      if (peerConnection && candidate) {
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.error("Error adding received ice candidate", e);
+        }
+      }
+    });
+  }
 
-    socket.on('wrtc_candidate', async (candidate) => {
-      if (peerConnection && candidate) {
-        try {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (e) {
-          console.error("Error adding received ice candidate", e);
-        }
-      }
-    });
-  }
+  async function uploadToServer(blobData) {
+    uploadStatus.textContent = "⏳ Mengunggah video ke server...";
+    uploadStatus.style.color = "#ffb400";
 
-  async function uploadToServer(blobData) {
-    uploadStatus.textContent = "⏳ Mengunggah video ke server...";
-    uploadStatus.style.color = "#ffb400";
+    const formData = new FormData();
+    formData.append('video', blobData, `var_${Date.now()}.webm`);
 
-    const formData = new FormData();
-    formData.append('video', blobData, `var_${Date.now()}.webm`);
+    try {
+      const response = await fetch('/upload-var', {
+        method: 'POST',
+        body: formData
+      });
 
-    try {
-      const response = await fetch('/upload-var', {
-        method: 'POST',
-        body: formData
-      });
+      if (response.ok) {
+        const result = await response.json();
+        uploadStatus.textContent = `✅ Berhasil disimpan di server: ${result.filename}`;
+        uploadStatus.style.color = "#14d97a";
+      } else {
+        uploadStatus.textContent = "⚠️ Gagal mengunggah ke server (Server Error).";
+        uploadStatus.style.color = "#ef1f3a";
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      uploadStatus.textContent = "⚠️ Gagal terhubung ke server untuk upload.";
+      uploadStatus.style.color = "#ef1f3a";
+    }
+  }
 
-      if (response.ok) {
-        const result = await response.json();
-        uploadStatus.textContent = `✅ Berhasil disimpan di server: ${result.filename}`;
-        uploadStatus.style.color = "#14d97a";
-      } else {
-        uploadStatus.textContent = "⚠️ Gagal mengunggah ke server (Server Error).";
-        uploadStatus.style.color = "#ef1f3a";
-      }
-    } catch (err) {
-      console.error("Upload error:", err);
-      uploadStatus.textContent = "⚠️ Gagal terhubung ke server untuk upload.";
-      uploadStatus.style.color = "#ef1f3a";
-    }
-  }
+  function drawCanvas() {
+      ctx.drawImage(rawVideo, 0, 0, canvas.width, canvas.height);
+      
+      ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+      ctx.fillRect(canvas.width - 320, canvas.height - 100, 300, 80);
 
-  function drawCanvas() {
-      ctx.drawImage(rawVideo, 0, 0, canvas.width, canvas.height);
-      
-      ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-      ctx.fillRect(canvas.width - 320, canvas.height - 100, 300, 80);
+      let displayTime = (state.status === 'countdown' || state.status === 'idle') ? "00:00.000" : currentTimerText;
 
-      let displayTime = (state.status === 'countdown' || state.status === 'idle') ? "00:00.000" : currentTimerText;
+      ctx.fillStyle = "#ffb400"; 
+      ctx.font = "bold 48px 'Courier New', monospace";
+      ctx.textAlign = "right";
+      ctx.fillText(displayTime, canvas.width - 40, canvas.height - 45);
 
-      ctx.fillStyle = "#ffb400"; 
-      ctx.font = "bold 48px 'Courier New', monospace";
-      ctx.textAlign = "right";
-      ctx.fillText(displayTime, canvas.width - 40, canvas.height - 45);
+      requestAnimationFrame(drawCanvas);
+  }
 
-      requestAnimationFrame(drawCanvas);
-  }
+  socket.on('sync_state', (newState) => {
+    const oldStatus = state.status;
+    state = newState;
 
-  socket.on('sync_state', (newState) => {
-    const oldStatus = state.status;
-    state = newState;
+    if (state.status === 'running' && oldStatus !== 'running') {
+      if (mediaRecorder && mediaRecorder.state === 'inactive') {
+        recordedChunks = []; 
+        document.getElementById('replay-container').style.display = 'none';
+        mediaRecorder.start();
+        recDot.classList.add('active');
+        camStatus.textContent = "MEREKAM...";
+        camStatus.style.color = "var(--red)";
+      }
+    }
 
-    if (state.status === 'running' && oldStatus !== 'running') {
-      if (mediaRecorder && mediaRecorder.state === 'inactive') {
-        recordedChunks = []; 
-        document.getElementById('replay-container').style.display = 'none';
-        mediaRecorder.start();
-        recDot.classList.add('active');
-        camStatus.textContent = "MEREKAM...";
-        camStatus.style.color = "var(--red)";
-      }
-    }
+    if (state.status === 'finished' && oldStatus === 'running') {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        setTimeout(() => { 
+            mediaRecorder.stop();
+            recDot.classList.remove('active');
+            camStatus.style.color = "white";
+        }, 1000);
+      }
+    }
+    
+    if (state.status === 'idle') {
+        recDot.classList.remove('active');
+        camStatus.textContent = "Kamera Aktif - Menunggu Start";
+        camStatus.style.color = "white";
+        currentTimerText = "00:00.000";
+    }
+  });
 
-    if (state.status === 'finished' && oldStatus === 'running') {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        setTimeout(() => { 
-            mediaRecorder.stop();
-            recDot.classList.remove('active');
-            camStatus.style.color = "white";
-        }, 1000);
-      }
-    }
-    
-    if (state.status === 'idle') {
-        recDot.classList.remove('active');
-        camStatus.textContent = "Kamera Aktif - Menunggu Start";
-        camStatus.style.color = "white";
-        currentTimerText = "00:00.000";
-    }
-  });
-
-  setInterval(() => {
-    let ms = 0;
-    if(state.status === 'running' && state.startTime) ms = Date.now() - state.startTime;
-    else if(state.status === 'finished' && state.startTime && state.finishTime) ms = state.finishTime - state.startTime;
-    
-    if(ms < 0) ms = 0;
-    const m = Math.floor(ms / 60000);
-    const s = Math.floor((ms % 60000) / 1000);
-    const ms_frac = ms % 1000;
-    currentTimerText = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + '.' + String(ms_frac).padStart(3, '0');
-  }, 10);
+  setInterval(() => {
+    let ms = 0;
+    if(state.status === 'running' && state.startTime) ms = Date.now() - state.startTime;
+    else if(state.status === 'finished' && state.startTime && state.finishTime) ms = state.finishTime - state.startTime;
+    
+    if(ms < 0) ms = 0;
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    const ms_frac = ms % 1000;
+    currentTimerText = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + '.' + String(ms_frac).padStart(3, '0');
+  }, 10);
 </script>
 </body>
 </html>
