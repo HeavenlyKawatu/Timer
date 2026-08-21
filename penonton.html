@@ -18,7 +18,6 @@
   .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);}
   .panel-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;padding:22px 20px 44px;text-align:center;}
   
-  /* Layout Utama: Kiri Video Live VAR, Kanan Timer & Papan Skor */
   .monitor-grid {
     display: flex;
     gap: 20px;
@@ -58,6 +57,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    z-index: 10;
   }
   .stream-dot { width: 8px; height: 8px; background: var(--go); border-radius: 50%; animation: blink 1s infinite; }
   @keyframes blink { 50% { opacity: 0; } }
@@ -100,7 +100,7 @@
   <div class="panel-body">
     <div class="monitor-grid">
       
-      <!-- KOTAK VIDEO LIVE STREAMING DARI HP VAR -->
+      <!-- KOTAK VIDEO LIVE STREAMING DARI VAR -->
       <div class="video-section">
         <div class="stream-badge">
           <div class="stream-dot"></div>
@@ -140,6 +140,7 @@
   let leaderboard = [];
   let peerConnection;
 
+  // Konfigurasi STUN Server untuk menembus jaringan cloud publik (Railway)
   const rtcConfig = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
   };
@@ -148,10 +149,17 @@
   const streamStatusText = document.getElementById('stream-status-text');
 
   const AudioContext = window.AudioContext || window.webkitAudioContext;
-  const audioCtx = new AudioContext();
+  let audioCtx = null;
+
+  // Inisialisasi Audio Context interaksi pengguna agar suara aman berjalan di browser
+  document.body.addEventListener('click', () => {
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }, { once: true });
 
   function playSound(type) {
-    if(audioCtx.state === 'suspended') audioCtx.resume();
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
     osc.connect(gainNode); gainNode.connect(audioCtx.destination);
@@ -167,7 +175,11 @@
     }
   }
 
-  socket.on('connect', () => { document.getElementById('conn-status').textContent = '🟢 Online'; });
+  socket.on('connect', () => { 
+    document.getElementById('conn-status').textContent = '🟢 Online'; 
+    // Minta stream jika VAR sudah siap sebelumnya
+    socket.emit('viewer_request_stream');
+  });
   socket.on('disconnect', () => { document.getElementById('conn-status').textContent = '🔴 Offline'; });
 
   // --- WEBRTC RECEIVER SETUP (MENERIMA STREAM DARI VAR) ---
@@ -178,6 +190,10 @@
 
   socket.on('wrtc_offer', async (offer) => {
     try {
+      if (peerConnection) {
+        peerConnection.close();
+      }
+
       peerConnection = new RTCPeerConnection(rtcConfig);
 
       peerConnection.ontrack = (event) => {
